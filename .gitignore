@@ -1,0 +1,17 @@
+# Build directories
+cmake-build-debug/
+build/
+out/
+
+# CMake cache
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+
+# IDE files (if using CLion)
+.idea/
+*.iml
+
+# OS files
+.DS_Store
