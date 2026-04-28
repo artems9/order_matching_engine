@@ -1,6 +1,7 @@
 #include <vector>
 #include <queue>
 #include <iostream>
+#include <unordered_set>
 
 struct Order 
 {
@@ -33,6 +34,14 @@ struct OrderBook
     // min heap for sell orders since lowest seller wins
     std::priority_queue<Order, std::vector<Order>, CompareSells> sellOrders;
 
+    // set of order id's for keeping track of cancelled orders
+    std::unordered_set<int> cancelledOrders;
+
+    void requestCancellation(const Order& order)
+    {
+        cancelledOrders.insert(order.id);
+    }
+
     void addOrder(const Order& order)
     {
         // buy order
@@ -48,6 +57,24 @@ struct OrderBook
 
         Order buyOrder = buyOrders.top();
         Order sellOrder = sellOrders.top();
+
+        // cancel buy order
+        if (cancelledOrders.contains(buyOrder.id))
+        {
+            std::cout << "Cancelling order " << buyOrder.id << std::endl;
+            buyOrders.pop();    // remove from heap
+            cancelledOrders.erase(buyOrder.id); // remove from cancelled set
+            return true;
+        }
+        // cancel sell order
+        if (cancelledOrders.contains(sellOrder.id))
+        {
+            std::cout << "Cancelling order " << sellOrder.id << std::endl;
+            sellOrders.pop();   // remove from heap
+            cancelledOrders.erase(sellOrder.id); // remove from cancelled set
+            return true;
+        }
+
         // no match found
         if (buyOrder.price < sellOrder.price) { return false; }
 
@@ -56,11 +83,14 @@ struct OrderBook
 
         // make trade
         int quantityTraded = std::min(sellOrder.quantity, buyOrder.quantity);
+
+        std::cout << "Trade: " << quantityTraded
+        << " units @ $" << buyOrder.price
+        <<  " | Buy order " << buyOrder.id << " matched with Sell order " << sellOrder.id << std::endl;
+
         buyOrder.quantity -= quantityTraded;
         sellOrder.quantity -= quantityTraded;
-        std::cout << "Matched " << quantityTraded
 
-                      << " @ " << sellOrder.price << std::flush;
         // put whats left back into orderbook
         if (buyOrder.quantity > 0) { buyOrders.push(buyOrder); }
         if (sellOrder.quantity > 0) { sellOrders.push(sellOrder); }
@@ -86,6 +116,7 @@ int main()
     ob.addOrder(o4);
     ob.addOrder(o5);
     ob.addOrder(o6);
+    ob.requestCancellation(o6);
 
 
     while (ob.tryMatchingOrders()) {};
