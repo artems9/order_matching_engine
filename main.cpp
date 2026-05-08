@@ -1,125 +1,205 @@
-#include <vector>
-#include <queue>
 #include <iostream>
-#include <unordered_set>
+#include <queue>
+#include <vector>
 
-struct Order 
-{
-    enum class Type { Buy, Sell };
+// Represents a request to buy/sell
+struct Order {
+    enum class Side {
+        Buy,
+        Sell
+    };
 
-    int id; 
+    enum class Type {
+        Market,
+        Limit
+    };
+
+    int id;
     int price;
     int quantity;
+
+    Side side;
     Type type;
 };
 
+// Represents an executed transaction
+struct Trade {
+    int buyOrderID;
+    int sellOrderID;
 
-struct CompareBuys
-{
-    // for buys we want highest prices on top so return true for bigger value
-    bool operator() (const Order& a, const Order& b) { return a.price < b.price; }
+    int price;
+    int quantity;
 };
 
-struct CompareSells
-{
-    // for sells we want the lowest prices on top so return true for smaller value
-    bool operator() (const Order& a, const Order& b) { return a.price > b.price; }
+// maxheap
+struct CompareBuys {
+    bool operator() (const Order& a, const Order& b) const { return a.price < b.price; }
 };
 
+// minheap
+struct CompareSells {
+    bool operator() (const Order& a, const Order& b) const { return a.price > b.price; }
+};
 
-struct OrderBook
-{
-    // max heap for buy orders since highest bidder wins
-    std::priority_queue<Order, std::vector<Order>, CompareBuys> buyOrders;
-    // min heap for sell orders since lowest seller wins
-    std::priority_queue<Order, std::vector<Order>, CompareSells> sellOrders;
+// Stores active unmatched orders
+class OrderBook {
+public:
+    using BuyHeap = std::priority_queue<Order,
+                                        std::vector<Order>,
+                                        CompareBuys>;
 
-    // set of order id's for keeping track of cancelled orders
-    std::unordered_set<int> cancelledOrders;
+    using SellHeap = std::priority_queue<Order,
+                                         std::vector<Order>,
+                                         CompareSells>;
 
-    void requestCancellation(const Order& order)
-    {
-        cancelledOrders.insert(order.id);
-    }
-
-    void addOrder(const Order& order)
-    {
-        // buy order
-        if (order.type == Order::Type::Buy) { buyOrders.push(order); }
-        // sell order
-        else { sellOrders.push(order); }
-    }
-
-    bool tryMatchingOrders()
-    {
-        // make sure have buy and sell orders available
-        if (buyOrders.empty() || sellOrders.empty()) { return false; }
-
-        Order buyOrder = buyOrders.top();
-        Order sellOrder = sellOrders.top();
-
-        // cancel buy order
-        if (cancelledOrders.contains(buyOrder.id))
-        {
-            std::cout << "Cancelling order " << buyOrder.id << std::endl;
-            buyOrders.pop();    // remove from heap
-            cancelledOrders.erase(buyOrder.id); // remove from cancelled set
-            return true;
+    void add(const Order& order) {
+        if (order.side == Order::Side::Buy) {
+            buys_.push(order);
+        } else {
+            sells_.push(order);
         }
-        // cancel sell order
-        if (cancelledOrders.contains(sellOrder.id))
-        {
-            std::cout << "Cancelling order " << sellOrder.id << std::endl;
-            sellOrders.pop();   // remove from heap
-            cancelledOrders.erase(sellOrder.id); // remove from cancelled set
-            return true;
+    }
+
+    [[nodiscard]] bool hasBuys() const {
+        return !buys_.empty();
+    }
+
+    [[nodiscard]] bool hasSells() const {
+        return !sells_.empty();
+    }
+
+    [[nodiscard]] Order topBuy() const {
+        return buys_.top();
+    }
+    [[nodiscard]] Order topSell() const {
+        return sells_.top();
+    }
+
+    void popBuy() { buys_.pop(); }
+
+    void popSell() { sells_.pop(); }
+
+private:
+    BuyHeap buys_;
+    SellHeap sells_;
+};
+
+
+// Makes decisions and performs matching
+class MatchingEngine {
+public:
+    std::vector<Trade> process(Order incomingOrder) {
+        std::vector<Trade> trades;
+
+        if (incomingOrder.side == Order::Side::Buy) {
+            processBuy(incomingOrder, trades);
+        } else {
+            processSell(incomingOrder, trades);
         }
 
-        // no match found
-        if (buyOrder.price < sellOrder.price) { return false; }
+        return trades;
+    }
 
-        buyOrders.pop();
-        sellOrders.pop();
+private:
+    OrderBook book_;
 
-        // make trade
-        int quantityTraded = std::min(sellOrder.quantity, buyOrder.quantity);
+    void processBuy(Order& buyOrder, std::vector<Trade>& trades) {
+        while (book_.hasSells()) {
+            Order bestSell = book_.topSell();
 
-        std::cout << "Trade: " << quantityTraded
-        << " units @ $" << buyOrder.price
-        <<  " | Buy order " << buyOrder.id << " matched with Sell order " << sellOrder.id << std::endl;
+            if (!canMatch(buyOrder, bestSell)) { break; }
 
-        buyOrder.quantity -= quantityTraded;
-        sellOrder.quantity -= quantityTraded;
+            int const quantityTraded = std::min(buyOrder.quantity, bestSell.quantity);
+            trades.push_back(
+                Trade{
+                    buyOrder.id,
+                    bestSell.id,
+                    bestSell.price,
+                    quantityTraded
+                });
+            buyOrder.quantity -= quantityTraded;
+            bestSell.quantity -= quantityTraded;
 
-        // put whats left back into orderbook
-        if (buyOrder.quantity > 0) { buyOrders.push(buyOrder); }
-        if (sellOrder.quantity > 0) { sellOrders.push(sellOrder); }
-        return true;
+            book_.popSell();
+            if (bestSell.quantity > 0 ) { book_.add(bestSell); }
+            if (buyOrder.quantity == 0) { return; }
+        }
+        // Whatever is left of this order could not be matched, so it stays in the book.
+        book_.add(buyOrder);
+    }
+
+    void processSell(Order& sellOrder, std::vector<Trade>& trades) {
+        while (book_.hasBuys()) {
+            Order bestBuy = book_.topBuy();
+
+            if (!canMatch(bestBuy, sellOrder)) { break; }
+
+            const int quantityTraded = std::min(bestBuy.quantity, sellOrder.quantity);
+
+            trades.push_back(
+                Trade{
+                    bestBuy.id,
+                    sellOrder.id,
+                    bestBuy.price,
+                    quantityTraded
+                }
+            );
+
+            bestBuy.quantity -= quantityTraded;
+            sellOrder.quantity -= quantityTraded;
+
+            book_.popBuy();
+            if (bestBuy.quantity > 0) { book_.add(bestBuy); }
+            if (sellOrder.quantity == 0) { return; }
+        }
+        book_.add(sellOrder);
+    }
+
+    static bool canMatch(const Order& buyOrder, const Order& sellOrder) {
+        return buyOrder.price >= sellOrder.price;
     }
 };
 
 
-int main() 
-{
-    Order o1 {0, 10, 100, Order::Type::Buy};
-    Order o3 {2, 15, 100, Order::Type::Buy};
-    Order o6 {2, 20, 100, Order::Type::Buy};
+int main() {
+    MatchingEngine engine;
+    Order buyOrder{
+    1,
+    105,
+    100,
+    Order::Side::Buy,
+    Order::Type::Limit
+        };
 
-    Order o2 {1, 10, 100, Order::Type::Sell};
-    Order o4 {3, 18, 100, Order::Type::Sell};
-    Order o5 {4, 15, 100, Order::Type::Sell};
+    Order sellOrder{
+        2,
+        103,
+        50,
+        Order::Side::Sell,
+        Order::Type::Limit
+            };
 
-    OrderBook ob;
-    ob.addOrder(o1);
-    ob.addOrder(o2);
-    ob.addOrder(o3);
-    ob.addOrder(o4);
-    ob.addOrder(o5);
-    ob.addOrder(o6);
-    ob.requestCancellation(o6);
+    auto trades = engine.process(buyOrder);
+    for (const auto& trade : trades) {
+        std::cout
+            << "TRADE: "
+            << trade.quantity
+            << " @ "
+            << trade.price
+            << '\n';
+    }
 
+    std::cout << "Buy ran" << std::endl;
 
-    while (ob.tryMatchingOrders()) {};
+    trades = engine.process(sellOrder);
+    for (const auto& trade : trades) {
+        std::cout
+            << "TRADE: "
+            << trade.quantity
+            << " @ "
+            << trade.price
+            << '\n';
+    }
 
     return 0;
-};
+}
