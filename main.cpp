@@ -1,6 +1,8 @@
 #include <iostream>
-#include <queue>
 #include <vector>
+#include <map>
+#include <list>
+#include <chrono>
 
 // Represents a request to buy/sell
 struct Order {
@@ -15,6 +17,7 @@ struct Order {
     };
 
     int id;
+    int seqNum;
     int price;
     int quantity;
 
@@ -31,77 +34,145 @@ struct Trade {
     int quantity;
 };
 
-// maxheap
-struct CompareBuys {
-    bool operator() (const Order& a, const Order& b) const { return a.price < b.price; }
-};
-
-// minheap
-struct CompareSells {
-    bool operator() (const Order& a, const Order& b) const { return a.price > b.price; }
-};
+// ================================================================================================
+// ================================================================================================
+// ================================================================================================
 
 // Stores active unmatched orders
 class OrderBook {
 public:
-    using BuyHeap = std::priority_queue<Order,
-                                        std::vector<Order>,
-                                        CompareBuys>;
-
-    using SellHeap = std::priority_queue<Order,
-                                         std::vector<Order>,
-                                         CompareSells>;
-
-    void add(const Order& order) {
-        if (order.side == Order::Side::Buy) {
-            buys_.push(order);
-        } else {
-            sells_.push(order);
+    void printBook() const {
+        std::cout << "BIDS:\n";
+        for (const auto& [price, orders] : bids_) {
+            std::cout << "  " << price << ": ";
+            for (const auto& o : orders) {
+                std::cout << "[id=" << o.id << " qty=" << o.quantity << "] ";
+            }
+            std::cout << '\n';
+        }
+        std::cout << "ASKS:\n";
+        for (const auto& [price, orders] : asks_) {
+            std::cout << "  " << price << ": ";
+            for (const auto& o : orders) {
+                std::cout << "[id=" << o.id << " qty=" << o.quantity << "] ";
+            }
+            std::cout << '\n';
         }
     }
 
-    [[nodiscard]] bool hasBuys() const {
-        return !buys_.empty();
+    void add(const Order& order) {
+        if (order.side == Order::Side::Buy) {
+            // store order in orderbook
+            auto& orderList = bids_[order.price];
+            orderList.push_back(order);
+            // store order in map for fast lookup in cancel()
+            orderIdToIterator_[order.id] = std::prev(orderList.end());
+        } else {
+            auto& orderList = asks_[order.price];
+            orderList.push_back(order);
+            // store order in map for fast lookup in cancel()
+            orderIdToIterator_[order.id] = std::prev(orderList.end());
+        }
     }
 
-    [[nodiscard]] bool hasSells() const {
-        return !sells_.empty();
+    void cancel(const int orderId) {
+        // get iterator to entry in map of std::list
+        const auto it = orderIdToIterator_.find(orderId);
+        // make sure its valid (order exists)
+        if (it == orderIdToIterator_.end()) { return; }
+
+        // get order from std::list iterator
+        const Order order = *it->second;
+
+        // find which side of orderbook order is in and remove it
+        if (order.side == Order::Side::Buy) {
+            auto& orderList = bids_[order.price];
+            orderList.erase(it->second);
+            // make sure to check incase price level empty after cancelling order
+            if (orderList.empty()) { bids_.erase(order.price); }
+        } else {
+            auto& orderList = asks_[order.price];
+            orderList.erase(it->second);
+            if (orderList.empty()) { asks_.erase(order.price); }
+        }
+        // finally remove from iterator map
+        orderIdToIterator_.erase(orderId);
     }
+
+    void popBuy() {
+        const auto level = bids_.begin();
+        Order& order = level->second.front();
+        // remove order from orderIdToIterator map
+        orderIdToIterator_.erase(order.id);
+        // remove from orderbook
+        level->second.pop_front();
+        // make sure we delete price level from orderbook if empty after removing order
+        if (level->second.empty()) {
+            bids_.erase(level);
+        }
+    }
+
+    void popSell() {
+        const auto level = asks_.begin();
+        Order& order = level->second.front();
+        // remove order from orderIdToIterator map
+        orderIdToIterator_.erase(order.id);
+        // remove from orderbook
+        level->second.pop_front();
+        // make sure we delete price level from orderbook if empty after removing order
+        if (level->second.empty()) {
+            asks_.erase(level);
+        }
+    }
+
+    [[nodiscard]] bool hasBuys() const { return !bids_.empty(); }
+
+    [[nodiscard]] bool hasSells() const { return !asks_.empty(); }
 
     [[nodiscard]] Order topBuy() const {
-        return buys_.top();
+        const auto level = bids_.begin();       // highest price
+        return level->second.front();           // oldest order (first/left in deque)
     }
     [[nodiscard]] Order topSell() const {
-        return sells_.top();
+        const auto level = asks_.begin();       // lowest price
+        return level->second.front();           // oldest order (first/left in deque)
     }
 
-    void popBuy() { buys_.pop(); }
-
-    void popSell() { sells_.pop(); }
-
 private:
-    BuyHeap buys_;
-    SellHeap sells_;
+    // bids_: highest price first → use std::greater
+    std::map<int, std::list<Order>, std::greater<>>         bids_;
+    // asks_: lowest price first → default std::less is fine
+    std::map<int, std::list<Order>>                         asks_;
+    // maps orderId : iterator pointing to Order for easy price level lookup in cancel()
+    // doubly linked list so removing Order from middle is easy (std::deque would shift and leave dangling iterators)
+    std::unordered_map<int, std::list<Order>::iterator>     orderIdToIterator_;
 };
 
+
+
+// ================================================================================================
+// ================================================================================================
+// ================================================================================================
 
 // Makes decisions and performs matching
 class MatchingEngine {
 public:
+    // passthrough functions since engine owns orderbook
+    void printBook() const { book_.printBook(); }
+    void cancel(const int orderId) { book_.cancel(orderId); }
+
     std::vector<Trade> process(Order incomingOrder) {
         std::vector<Trade> trades;
-
         if (incomingOrder.side == Order::Side::Buy) {
             processBuy(incomingOrder, trades);
         } else {
             processSell(incomingOrder, trades);
         }
-
         return trades;
     }
 
 private:
-    OrderBook book_;
+    OrderBook book_;    // nothing outside MatchingEngine can touch book_ directly
 
     void processBuy(Order& buyOrder, std::vector<Trade>& trades) {
         while (book_.hasSells()) {
@@ -156,50 +227,36 @@ private:
     }
 
     static bool canMatch(const Order& buyOrder, const Order& sellOrder) {
+        // match market orders
+        if (buyOrder.type == Order::Type::Market || sellOrder.type == Order::Type::Market) {
+            return true;
+        }
+        // match limit orders
         return buyOrder.price >= sellOrder.price;
     }
 };
 
 
+// ================================================================================================
+// ================================================================================================
+// ================================================================================================
+
+
 int main() {
     MatchingEngine engine;
-    Order buyOrder{
-    1,
-    105,
-    100,
-    Order::Side::Buy,
-    Order::Type::Limit
-        };
+    // benchmark
+    constexpr int NUM_ORDERS = 10000;
+    auto start = std::chrono::high_resolution_clock::now();
 
-    Order sellOrder{
-        2,
-        103,
-        50,
-        Order::Side::Sell,
-        Order::Type::Limit
-            };
-
-    auto trades = engine.process(buyOrder);
-    for (const auto& trade : trades) {
-        std::cout
-            << "TRADE: "
-            << trade.quantity
-            << " @ "
-            << trade.price
-            << '\n';
+    for (int i = 0; i < NUM_ORDERS; i++) {
+        Order o{ i, i, 100 + (i % 10), 10, Order::Side::Buy, Order::Type::Limit };
+        engine.process(o);
     }
 
-    std::cout << "Buy ran" << std::endl;
+    auto end = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
 
-    trades = engine.process(sellOrder);
-    for (const auto& trade : trades) {
-        std::cout
-            << "TRADE: "
-            << trade.quantity
-            << " @ "
-            << trade.price
-            << '\n';
-    }
-
+    std::cout << NUM_ORDERS << " orders in " << duration.count() << " us\n";
+    std::cout << "avg: " << static_cast<double>(duration.count()) / NUM_ORDERS << " us/order\n";
     return 0;
 }
