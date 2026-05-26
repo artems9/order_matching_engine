@@ -281,9 +281,15 @@ public:
     ThreadPool(ThreadPool&&)                    = delete;
     ThreadPool& operator=(ThreadPool&&)         = delete;
 
-    // public methods
-    void enqueue(Order order);  // push an order onto the queue
-    void stop();                // tell all threads to shut down
+    // push an order onto the queue
+    void enqueue(Order order) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        queue_.push(order);
+        cv_.notify_one();
+    }
+
+    // tell all threads to shut down
+    void stop();
 
 private:
     // ThreadPool borrows the MatchingEngine. Someone else created it (main)
