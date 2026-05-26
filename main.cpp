@@ -3,6 +3,10 @@
 #include <map>
 #include <list>
 #include <chrono>
+#include <thread>
+#include <mutex>
+#include <condition_variable>
+#include <queue>
 
 // Represents a request to buy/sell
 struct Order {
@@ -149,12 +153,11 @@ private:
 };
 
 
-
 // ================================================================================================
 // ================================================================================================
 // ================================================================================================
 
-// Makes decisions and performs matching
+// Performs matching on orders inside orderbook
 class MatchingEngine {
 public:
     // passthrough functions since engine owns orderbook
@@ -172,7 +175,8 @@ public:
     }
 
 private:
-    OrderBook book_;    // nothing outside MatchingEngine can touch book_ directly
+    // MatchingEngine creates, owns and destroys the OrderBook.
+    OrderBook book_;
 
     void processBuy(Order& buyOrder, std::vector<Trade>& trades) {
         while (book_.hasSells()) {
@@ -236,6 +240,61 @@ private:
     }
 };
 
+// ================================================================================================
+// ================================================================================================
+// ================================================================================================
+
+// Manages worker threads that process orders in a queue
+class ThreadPool {
+public:
+    explicit ThreadPool(const int numThreads, MatchingEngine& engine) : engine_(engine) {
+        // fill threads_ with numthreads worker threads
+        for (int i = 0; i < numThreads; ++i) {
+            threads_.emplace_back([this]() {    // 'this' gives access to all mem. variables
+                // cv.wait() requires a unique_lock and allows unlocking (also nice RAII)
+                std::unique_lock<std::mutex> lock(mutex_);
+                while (!stopped_ || !queue_.empty()) {
+                    // release lock and sleep until predicate returns true
+                    cv_.wait(lock, [this]() {
+                        return !queue_.empty() || stopped_;
+                    });
+                    // acquire lock and do work
+                    if (!queue_.empty()) {
+                        // copy assignment because pop() would cause dangling reference
+                        Order order = queue_.front();
+                        queue_.pop();
+                        lock.unlock();
+                        engine_.process(order); // dependency injection
+                        lock.lock();
+                    }
+                }
+            });
+        }
+    }
+    ~ThreadPool();
+
+    // delete copy
+    ThreadPool(const ThreadPool&)               = delete;
+    ThreadPool& operator=(const ThreadPool&)    = delete;
+
+    // delete move
+    ThreadPool(ThreadPool&&)                    = delete;
+    ThreadPool& operator=(ThreadPool&&)         = delete;
+
+    // public methods
+    void enqueue(Order order);  // push an order onto the queue
+    void stop();                // tell all threads to shut down
+
+private:
+    // ThreadPool borrows the MatchingEngine. Someone else created it (main)
+    // and will destroy it. ThreadPool just has a way to reach it.
+    MatchingEngine&             engine_;
+    std::queue<Order>           queue_;
+    std::mutex                  mutex_;
+    std::condition_variable     cv_;
+    std::vector<std::thread>    threads_;
+    bool                        stopped_ {false};
+};
 
 // ================================================================================================
 // ================================================================================================
