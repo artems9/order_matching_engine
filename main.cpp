@@ -165,6 +165,7 @@ public:
     void cancel(const int orderId) { book_.cancel(orderId); }
 
     std::vector<Trade> process(Order incomingOrder) {
+        std::lock_guard<std::mutex> lock(mutex_);
         std::vector<Trade> trades;
         if (incomingOrder.side == Order::Side::Buy) {
             processBuy(incomingOrder, trades);
@@ -177,6 +178,7 @@ public:
 private:
     // MatchingEngine creates, owns and destroys the OrderBook.
     OrderBook book_;
+    std::mutex mutex_;
 
     void processBuy(Order& buyOrder, std::vector<Trade>& trades) {
         while (book_.hasSells()) {
@@ -260,7 +262,11 @@ public:
                         Order order = queue_.front();           // copy to avoid dangling reference
                         queue_.pop();
                         lock.unlock();
-                        engine_.process(order);                 // "dependency injection"
+                        {
+                            // let other threads grab orders from the queue
+                            // while 1 thread is busy processing order
+                            engine_.process(order);             // "dependency injection"
+                        }
                         lock.lock();
                     }
                 }
@@ -268,7 +274,16 @@ public:
         }
     }
     ~ThreadPool() {
-        stop();
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            stopped_ = true;
+        }
+        cv_.notify_all();
+        // wait for all threads to finish work fully before returning
+        // else crash occurs if main thread exits before workers finish
+        for (auto& t : threads_) {
+            if (t.joinable()) { t.join(); }
+        }
     }
 
     // delete copy
@@ -284,20 +299,6 @@ public:
         std::lock_guard<std::mutex> lock(mutex_);
         queue_.push(order);
         cv_.notify_one();
-    }
-
-    // safely shut down all threads
-    void stop() {
-        {
-            std::lock_guard<std::mutex> lock(mutex_);
-            stopped_ = true;
-        }
-        cv_.notify_all();
-        // wait for all threads to finish work fully before returning
-        // else crash occurs if main thread exits before workers finish
-        for (auto& t : threads_) {
-            t.join();
-        }
     }
 
 private:
@@ -318,19 +319,21 @@ private:
 
 int main() {
     MatchingEngine engine;
+
     // benchmark
     constexpr int NUM_ORDERS = 10000;
     auto start = std::chrono::high_resolution_clock::now();
-
-    for (int i = 0; i < NUM_ORDERS; i++) {
-        Order o{ i, i, 100 + (i % 10), 10, Order::Side::Buy, Order::Type::Limit };
-        engine.process(o);
-    }
-
+    {
+    ThreadPool pool(4, engine);
+        for (int i = 0; i < NUM_ORDERS; i++) {
+            Order o{ i, i, 100 + (i % 10), 10, Order::Side::Buy, Order::Type::Limit };
+            pool.enqueue(o);
+        }
+    } // pool destructs here, stop() called, all threads joined
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
 
     std::cout << NUM_ORDERS << " orders in " << duration.count() << " us\n";
-    std::cout << "avg: " << static_cast<double>(duration.count()) / NUM_ORDERS << " us/order\n";
+    std::cout << "avg: " << static_cast<double>(duration.count()) / NUM_ORDERS << " microseconds/order\n";
     return 0;
 }
