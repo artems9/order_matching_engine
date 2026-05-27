@@ -250,28 +250,26 @@ public:
     explicit ThreadPool(const int numThreads, MatchingEngine& engine) : engine_(engine) {
         // fill threads_ with numthreads worker threads
         for (int i = 0; i < numThreads; ++i) {
-            threads_.emplace_back([this]() {    // 'this' gives access to all mem. variables
-                // cv.wait() requires a unique_lock and allows unlocking (also nice RAII)
-                std::unique_lock<std::mutex> lock(mutex_);
+            threads_.emplace_back([this]() {            // 'this' gives access to all mem. variables
+                std::unique_lock<std::mutex> lock(mutex_);   // cv.wait() uses unique_lock
                 while (!stopped_ || !queue_.empty()) {
-                    // release lock and sleep until predicate returns true
                     cv_.wait(lock, [this]() {
                         return !queue_.empty() || stopped_;
                     });
-                    // acquire lock and do work
                     if (!queue_.empty()) {
-                        // copy assignment because pop() would cause dangling reference
-                        Order order = queue_.front();
+                        Order order = queue_.front();           // copy to avoid dangling reference
                         queue_.pop();
                         lock.unlock();
-                        engine_.process(order); // dependency injection
+                        engine_.process(order);                 // "dependency injection"
                         lock.lock();
                     }
                 }
             });
         }
     }
-    ~ThreadPool();
+    ~ThreadPool() {
+        stop();
+    }
 
     // delete copy
     ThreadPool(const ThreadPool&)               = delete;
@@ -288,8 +286,19 @@ public:
         cv_.notify_one();
     }
 
-    // tell all threads to shut down
-    void stop();
+    // safely shut down all threads
+    void stop() {
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            stopped_ = true;
+        }
+        cv_.notify_all();
+        // wait for all threads to finish work fully before returning
+        // else crash occurs if main thread exits before workers finish
+        for (auto& t : threads_) {
+            t.join();
+        }
+    }
 
 private:
     // ThreadPool borrows the MatchingEngine. Someone else created it (main)
