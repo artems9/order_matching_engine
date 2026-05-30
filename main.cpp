@@ -7,6 +7,7 @@
 #include <mutex>
 #include <condition_variable>
 #include <queue>
+#include <unordered_map>
 
 // Represents a request to buy/sell
 struct Order {
@@ -64,6 +65,8 @@ public:
         }
     }
 
+    // pushes new orders to the back of list in orderbook.
+    // so the newest orders are at the back and the oldest at the front.
     void add(const Order& order) {
         if (order.side == Order::Side::Buy) {
             // store order in orderbook
@@ -133,22 +136,24 @@ public:
 
     [[nodiscard]] bool hasSells() const { return !asks_.empty(); }
 
-    [[nodiscard]] Order topBuy() const {
+    [[nodiscard]] Order& topBuy() {
         const auto level = bids_.begin();       // highest price
-        return level->second.front();           // oldest order (first/left in deque)
+        return level->second.front();           // oldest order (first/left in list)
     }
-    [[nodiscard]] Order topSell() const {
+    [[nodiscard]] Order& topSell() {
         const auto level = asks_.begin();       // lowest price
-        return level->second.front();           // oldest order (first/left in deque)
+        return level->second.front();           // oldest order (first/left in list)
     }
 
 private:
-    // bids_: highest price first → use std::greater
+    // maps (price level by highest first : FIFO d-linked list of orders by time-priority)
     std::map<int, std::list<Order>, std::greater<>>         bids_;
-    // asks_: lowest price first → default std::less is fine
+
+    // maps (price level by lowest first : FIFO d-linked list of orders by time-priority)
     std::map<int, std::list<Order>>                         asks_;
-    // maps orderId : iterator pointing to Order for easy price level lookup in cancel()
-    // doubly linked list so removing Order from middle is easy (std::deque would shift and leave dangling iterators)
+
+    // maps (orderId : iterator pointing to Order) for O(1) price level lookup in cancel()
+    // d-linked list b/c std::deque would shift and leave dangling iterators
     std::unordered_map<int, std::list<Order>::iterator>     orderIdToIterator_;
 };
 
@@ -182,7 +187,8 @@ private:
 
     void processBuy(Order& buyOrder, std::vector<Trade>& trades) {
         while (book_.hasSells()) {
-            Order bestSell = book_.topSell();
+            // Modify bestBuy in place before popping, and only pop if it's fully filled.
+            Order& bestSell = book_.topSell();
 
             if (!canMatch(buyOrder, bestSell)) { break; }
 
@@ -197,17 +203,18 @@ private:
             buyOrder.quantity -= quantityTraded;
             bestSell.quantity -= quantityTraded;
 
-            book_.popSell();
-            if (bestSell.quantity > 0 ) { book_.add(bestSell); }
+            if (bestSell.quantity == 0 ) { book_.popSell(); }
             if (buyOrder.quantity == 0) { return; }
         }
-        // Whatever is left of this order could not be matched, so it stays in the book.
-        book_.add(buyOrder);
+        // Whatever is left of limit order could not be matched, so it stays in the book.
+        if (buyOrder.type == Order::Type::Limit) {
+            book_.add(buyOrder);
+        }
     }
 
     void processSell(Order& sellOrder, std::vector<Trade>& trades) {
         while (book_.hasBuys()) {
-            Order bestBuy = book_.topBuy();
+            Order& bestBuy = book_.topBuy();
 
             if (!canMatch(bestBuy, sellOrder)) { break; }
 
@@ -225,21 +232,26 @@ private:
             bestBuy.quantity -= quantityTraded;
             sellOrder.quantity -= quantityTraded;
 
-            book_.popBuy();
-            if (bestBuy.quantity > 0) { book_.add(bestBuy); }
+            if (bestBuy.quantity == 0) { book_.popBuy(); }
             if (sellOrder.quantity == 0) { return; }
         }
-        book_.add(sellOrder);
+        if (sellOrder.type == Order::Type::Limit) {
+            book_.add(sellOrder);
+        }
     }
 
     static bool canMatch(const Order& buyOrder, const Order& sellOrder) {
-        // match market orders
-        if (buyOrder.type == Order::Type::Market || sellOrder.type == Order::Type::Market) {
+        // market orders only match against resting limit orders
+        if (buyOrder.type == Order::Type::Market && sellOrder.type == Order::Type::Limit) {
             return true;
         }
-        // match limit orders
+        if (sellOrder.type == Order::Type::Market && buyOrder.type == Order::Type::Limit) {
+            return true;
+        }
+        // limit vs limit — prices must cross
         return buyOrder.price >= sellOrder.price;
     }
+
 };
 
 // ================================================================================================
@@ -254,10 +266,12 @@ public:
         for (int i = 0; i < numThreads; ++i) {
             threads_.emplace_back([this]() {            // 'this' gives access to all mem. variables
                 std::unique_lock<std::mutex> lock(mutex_);   // cv.wait() uses unique_lock
+                // sleep unless tasks available or exit signaled
                 while (!stopped_ || !queue_.empty()) {
                     cv_.wait(lock, [this]() {
                         return !queue_.empty() || stopped_;
                     });
+                    // do work as long as tasks available
                     if (!queue_.empty()) {
                         Order order = queue_.front();           // copy to avoid dangling reference
                         queue_.pop();
@@ -294,7 +308,7 @@ public:
     ThreadPool(ThreadPool&&)                    = delete;
     ThreadPool& operator=(ThreadPool&&)         = delete;
 
-    // push an order onto the queue
+    // push an order onto multithreaded queue
     void enqueue(Order order) {
         std::lock_guard<std::mutex> lock(mutex_);
         queue_.push(order);
@@ -318,18 +332,17 @@ private:
 
 
 int main() {
-    MatchingEngine engine;
-
     // benchmark
     constexpr int NUM_ORDERS = 10000;
     auto start = std::chrono::high_resolution_clock::now();
     {
-    ThreadPool pool(4, engine);
-        for (int i = 0; i < NUM_ORDERS; i++) {
-            Order o{ i, i, 100 + (i % 10), 10, Order::Side::Buy, Order::Type::Limit };
-            pool.enqueue(o);
-        }
-    } // pool destructs here, stop() called, all threads joined
+        MatchingEngine engine;
+        ThreadPool pool(4, engine);
+            for (int i = 0; i < NUM_ORDERS; i++) {
+                Order o{ i, i, 100 + (i % 10), 10, Order::Side::Buy, Order::Type::Limit };
+                pool.enqueue(o);
+            }
+    } // pool destructs before engine here.
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
 
