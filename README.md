@@ -1,51 +1,63 @@
 # Trading Engine
 
 ## What it is
-This project is a toy implementation of an order 
+This project is a toy implementation of an order
 matching engine containing an orderbook internally
-used for processing orders placed by traders on exchanges. 
+used for processing orders placed by traders on exchanges.
 
 ## How it works
-OrderBook stores orders in price-level maps with a FIFO list per level, 
-MatchingEngine owns the book and handles matching logic, 
+OrderBook stores orders in price-level maps with a FIFO list per level,
+MatchingEngine owns the book and handles matching logic,
 trades are returned as a vector.
 
 The engine has two main components: OrderBook and MatchingEngine.
-OrderBook stores resting orders order in a std::map of price levels, 
+OrderBook stores resting orders in a std::map of price levels,
 each holding a FIFO std::list of orders. MatchingEngine owns the book
 and processes incoming orders, matching them against resting orders
 and returning any resulting trades and displaying them in terminal.
 
+A ThreadPool sits in front of the engine, accepting incoming orders via
+a thread-safe queue and dispatching them to worker threads for processing.
+
 ## Design decisions
 
 **Why std::list over std::deque for order storage**
-std::list was used to allow for fast order cancellation. 
-Cancelling an order in the middle of std::deque would shift all elements
+std::list was used to allow for fast order cancellation.
+Cancelling an order in the middle of std::deque would shift all elements.
 Essentially this is the difference between having O(n) vs O(1) time complexity.
 
 **Why std::map for price levels instead of a heap**
-std::map keeps price levels sorted and supports deletion and 
-iteration naturally. A heap only provides efficient access to the 
-top element, therefore removing arbitrary price levels or iterating in 
-order requires O(n) work. std::map lookup is O(log n ) but that
-tradeoff is acceptable given the other benefits. 
+std::map keeps price levels sorted and supports deletion and
+iteration naturally. A heap only provides efficient access to the
+top element, therefore removing arbitrary price levels or iterating in
+order requires O(n) work. std::map lookup is O(log n) but that
+tradeoff is acceptable given the other benefits.
 
-**Why a separate orderIdToIterator_ index**
-This is a secodary/helper data structure to the orderbook map
-in order to allow finding order price level in map in O(1) time instead of searching all levels
+**Why a separate orderPositionById_ index**
+A secondary lookup table mapping order ID to its position in the list,
+allowing O(1) cancel without searching all price levels.
+
+**Why the thread pool is slower than single-threaded**
+The engine mutex serialises all matching — threads contend on one lock
+rather than working in parallel. The thread pool adds queue/mutex/context-switch
+overhead with no parallelism benefit. The correct architecture for a matching
+engine is a single dedicated matching thread per instrument, with a lock-free
+queue for ingestion. These benchmarks demonstrate that tradeoff directly.
 
 ## Benchmarks
-10,000 orders processed across 3 runs on MacBook M2:
+1,000,000 orders, mixed buys and sells with overlapping prices (real matching),
+release build on MacBook M2:
 
-| Run | Total | Avg/order |
-|-----|-------|-----------|
-| 1   | 3.7ms | 0.37 µs   |
-| 2   | 4.7ms | 0.47 µs   |
-| 3   | 4.0ms | 0.40 µs   |
+| Configuration      | Total    | Avg/order | Throughput       |
+|--------------------|----------|-----------|------------------|
+| Single-threaded    | 58.8ms   | 0.06 µs   | ~17M orders/sec  |
+| Thread pool (4t)   | 253ms    | 0.25 µs   | ~4M orders/sec   |
 
-Average: ~0.41 µs/order
+The single-threaded version is 4x faster because matching is inherently
+serial — adding threads only adds contention overhead without parallelism benefit.
 
-## What I'd improve next
-- Concurrency (thread-safe order ingestion)
-- WebSocket feed for live market data
-- Nanosecond latency benchmarking
+## What's next
+- Binance WebSocket feed for live crypto order flow
+- Python terminal dashboard showing live bids, asks, spread
+- Profile with Instruments to find and fix the bottleneck
+- Per-instrument thread partitioning to make parallelism meaningful
