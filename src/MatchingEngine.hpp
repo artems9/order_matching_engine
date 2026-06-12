@@ -1,9 +1,8 @@
 #pragma once
-#include "Types.h"
-#include "OrderBook.h"
-#include <vector>
+#include "OrderBook.hpp"
+#include "Types.hpp"
 #include <mutex>
-
+#include <vector>
 
 // Matches incoming orders against resting liquidity using
 // price-time priority.

@@ -1,31 +1,32 @@
 // 1. Corresponding Header
 // 2. Project Headers
-#include "Types.h"
-#include "MatchingEngine.h"
-#include "ThreadPool.h"
+#include "MatchingEngine.hpp"
+#include "ThreadPool.hpp"
+#include "Types.hpp"
 // 3. Third Party Headers
 // 4. Standard Library
 #include <iostream>
 #include <chrono>
+#include <sstream>
 
 int main() {
-    std::cout << "starting\n";
-    constexpr int NUM_ORDERS = 1000000;
-    auto start = std::chrono::high_resolution_clock::now();
-    {
-        MatchingEngine engine;
-        ThreadPool pool(4, engine);
-        for (int i = 0; i < NUM_ORDERS; i++) {
-            Order::Side side = (i % 2 == 0) ? Order::Side::Buy : Order::Side::Sell;
-            int price = 100 + (i % 10);
-            Order o{ i, i, price, 10, side, Order::Type::Limit, Order::TimeInForce::GTC};
-            pool.submitOrder(o);
+    MatchingEngine engine;
+    std::string line;
+    int id {0};
+    while (std::getline(std::cin, line)) {
+        std::stringstream ss(line);
+        std::string side;
+        int price;
+        int qty;
+        ss >> side >> price >> qty;
+        Order::Side pside = (side == "BUY") ? Order::Side::Buy : Order::Side::Sell;
+        Order order{id, id, price, qty, pside, Order::Type::Limit, Order::TimeInForce::GTC };
+        ++id;
+        std::vector<Trade> trades = engine.matchIncomingOrder(order);
+        for (const auto& trade : trades) {
+            std::cout << "traded : " << trade.quantity << "BTC" << std::endl;
+            std::cout << "at : " << trade.price << "$" << std::endl;
         }
-    } // pool destructs before engine here.
-    auto end = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-
-    std::cout << NUM_ORDERS << " orders in " << duration.count() << " us\n";
-    std::cout << "avg: " << static_cast<double>(duration.count()) / NUM_ORDERS << " microseconds/order\n";
+    }
     return 0;
 }
