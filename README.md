@@ -45,6 +45,10 @@ engine is a single dedicated matching thread per instrument, with a lock-free
 queue for ingestion. These benchmarks demonstrate that tradeoff directly.
 
 ## Benchmarks
+Some definitions: 
+Latency is the time it takes to complete a single operation. (Speed of one request)
+Throughput is how many operations can be completed in a given time period. (Volume over time)
+
 1,000,000 orders, mixed buys and sells with overlapping prices (real matching),
 release build on MacBook M2:
 
