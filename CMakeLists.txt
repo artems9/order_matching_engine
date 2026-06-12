@@ -18,3 +18,11 @@ add_executable(tests
         src/ThreadPool.cpp
 )
 target_include_directories(tests PRIVATE src)
+
+add_executable(benchmark
+        src/benchmark.cpp
+        src/OrderBook.cpp
+        src/MatchingEngine.cpp
+        src/ThreadPool.cpp
+)
+target_include_directories(benchmark PRIVATE src)

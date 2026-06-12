@@ -57,6 +57,13 @@ release build on MacBook M2:
 | Single-threaded    | 58.8ms   | 0.06 µs   | ~17M orders/sec  |
 | Thread pool (4t)   | 253ms    | 0.25 µs   | ~4M orders/sec   |
 
+| Metric | Value |
+|--------|-------|
+| Throughput | ~17M orders/sec |
+| p50 latency | 42 ns |
+| p95 latency | 84 ns |
+| p99 latency | 166 ns |
+
 The single-threaded version is 4x faster because matching is inherently
 serial — adding threads only adds contention overhead without parallelism benefit.
 

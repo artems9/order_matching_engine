@@ -10,7 +10,6 @@
 
 int main() {
     std::cout << "starting\n";
-    // benchmark
     constexpr int NUM_ORDERS = 1000000;
     auto start = std::chrono::high_resolution_clock::now();
     {
