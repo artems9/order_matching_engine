@@ -49,19 +49,23 @@ the engine via stdin.
 ## Design decisions
 
 **Why std::list over std::deque for order storage**
+
 std::list allows O(1) cancellation via iterator. Cancelling from the middle
 of a std::deque shifts all elements — O(n).
 
 **Why std::map for price levels instead of a heap**
+
 std::map keeps price levels sorted and supports deletion and iteration
 naturally. A heap only gives efficient access to the top element —
 removing arbitrary levels or iterating in order is O(n).
 
 **Why a separate orderPositionById_ index**
+
 A secondary unordered_map from order ID to list iterator allows O(1)
 cancellation without scanning all price levels.
 
 **Why the thread pool is slower than single-threaded**
+
 The engine mutex serialises all matching — threads contend on one lock
 with no parallelism benefit. The correct architecture is one matching
 thread per instrument with a lock-free inbound queue. These benchmarks
