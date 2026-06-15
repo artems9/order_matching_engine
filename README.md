@@ -82,7 +82,19 @@ release build on MacBook M2:
 
 Single-threaded is 4x faster — matching is inherently serial.
 
+## Profiling
+
+Profiled with Instruments Time Profiler on MacBook Air M2.
+
+Primary bottleneck: heap allocation. 
+std::list allocates a node per order insertion and frees it on removal. 
+At 1M orders this is 1M heap allocations - the malloc/free calls are
+visible throughout the profile in insertOrder and removeBestAsk.
+
+The standard HFT fix is a pool allocator - pre-allocate a block of 
+Order objects at startup and reuse them, eliminating per-order heap
+allocation entirely. Real HFT systems pre-allocate all memory before trading hours.
+
 ## What's next
 - Per-instrument thread partitioning to make parallelism meaningful
 - Lock-free inbound queue
-- Profiling with perf to identify cache bottlenecks

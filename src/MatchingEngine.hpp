@@ -1,6 +1,5 @@
 #pragma once
 #include "OrderBook.hpp"
-#include "Types.hpp"
 #include <mutex>
 #include <vector>
 
@@ -21,12 +20,12 @@ public:
     std::vector<Trade> matchIncomingOrder(Order incomingOrder);
 
 private:
-    // MatchingEngine creates, owns and destroys the OrderBook.
     OrderBook book_;
+    // Serializes access to the order book across threads.
     std::mutex engineMutex_;
 
     bool canFullyFill(const Order& order) const;
-    void handleRemainder(const Order& order, std::vector<Trade>& trades);
+    void handleRemainder(const Order& order);
     void matchIncomingBuy(Order& buyOrder, std::vector<Trade>& trades);
     void matchIncomingSell(Order& sellOrder, std::vector<Trade>& trades);
     static bool canMatch(const Order& buyOrder, const Order& sellOrder);

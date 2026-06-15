@@ -18,6 +18,7 @@
 class OrderBook {
 public:
     void insertOrder(const Order& order);
+    // Cancel a resting order by ID in O(1) time. No-op if the order is not found.
     void cancelOrder(int orderId);
     // Remove the highest-priority bid and erase the price level
     // if no orders remain at that price.

@@ -1,12 +1,6 @@
-// 1. Corresponding Header
-// 2. Project Headers
 #include "MatchingEngine.hpp"
-#include "ThreadPool.hpp"
 #include "Types.hpp"
-// 3. Third Party Headers
-// 4. Standard Library
 #include <iostream>
-#include <chrono>
 #include <sstream>
 
 int main() {
@@ -24,8 +18,8 @@ int main() {
         ++id;
         std::vector<Trade> trades = engine.matchIncomingOrder(order);
         for (const auto& trade : trades) {
-            std::cout << "traded : " << trade.quantity << "BTC" << std::endl;
-            std::cout << "at : " << trade.price << "$" << std::endl;
+            std::cout << "traded : " << trade.quantity << "BTC\n";
+            std::cout << "at : " << trade.price << "$\n";
         }
     }
     return 0;

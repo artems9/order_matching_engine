@@ -6,9 +6,8 @@
 #include <thread>
 #include <vector>
 
-class MatchingEngine;  // forward declaration
-
-// Manages worker threads that process orders in a queue
+// Manages a pool of worker threads that process incoming orders.
+// Borrows a MatchingEngine reference — the engine must outlive the pool.
 class ThreadPool {
 public:
     explicit ThreadPool(int numThreads, MatchingEngine& engine);
@@ -29,5 +28,5 @@ private:
     std::mutex                  queueMutex_;
     std::condition_variable     queueCv_;
     std::vector<std::thread>    workers_;
-    bool                        shutdown_ {false};
+    std::atomic<bool>           shutdown_ {false};
 };

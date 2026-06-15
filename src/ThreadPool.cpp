@@ -8,10 +8,7 @@ ThreadPool::ThreadPool(const int numThreads, MatchingEngine& engine) : engine_(e
 }
 
 ThreadPool::~ThreadPool() {
-    {
-        std::lock_guard<std::mutex> lock(queueMutex_);
-        shutdown_ = true;
-    }
+    shutdown_ = true;
     queueCv_.notify_all();
     // Join all workers to ensure no thread accesses destroyed engine or queue.
     for (auto& t : workers_) {
@@ -19,7 +16,6 @@ ThreadPool::~ThreadPool() {
     }
 }
 
-// Submit order for asynchronous processing by worker threads.
 void ThreadPool::submitOrder(Order order) {
     std::lock_guard<std::mutex> lock(queueMutex_);
     orderQueue_.push(order);

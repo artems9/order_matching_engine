@@ -1,12 +1,10 @@
 import asyncio
 import websockets
 import json
-import sys
 
 async def connect():
     url = "wss://stream.binance.com:9443/ws/btcusdt@depth"
     async with websockets.connect(url) as ws:
-        count = 0
         while True:
             message = await ws.recv()
             data = json.loads(message)
@@ -16,13 +14,11 @@ async def connect():
                 qty_int = int(float(qty) * 100)
                 if qty_int != 0:
                     print("SELL", price_int, qty_int)
-                    sys.stdout.flush()
 
             for price, qty in data['b']:
                 price_int = int(float(price) * 100)
                 qty_int = int(float(qty) * 100)
                 if qty_int != 0:
                     print("BUY", price_int, qty_int)
-                    sys.stdout.flush()
 
 asyncio.run(connect())

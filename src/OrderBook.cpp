@@ -13,7 +13,6 @@ void OrderBook::insertOrder(const Order& order) {
 }
 
 void OrderBook::cancelOrder(const int orderId) {
-    // Index order position for O(1) cancellation by orderId.
     const auto it = orderPositionById_.find(orderId);
     if (it == orderPositionById_.end()) { return; }
     const Order order = *it->second;
@@ -50,16 +49,16 @@ void OrderBook::removeBestAsk() {
     if (lvl->second.empty()) { askLevels_.erase(lvl); }
 }
 
-[[nodiscard]] bool OrderBook::hasBids() const { return !bidLevels_.empty(); }
+bool OrderBook::hasBids() const { return !bidLevels_.empty(); }
 
-[[nodiscard]] bool OrderBook::hasAsks() const { return !askLevels_.empty(); }
+bool OrderBook::hasAsks() const { return !askLevels_.empty(); }
 
-[[nodiscard]] Order& OrderBook::getBestBid() {
+Order& OrderBook::getBestBid() {
     const auto level = bidLevels_.begin();
     return level->second.front();
 }
 
-[[nodiscard]] Order& OrderBook::getBestAsk() {
+Order& OrderBook::getBestAsk() {
     const auto level = askLevels_.begin();
     return level->second.front();
 }

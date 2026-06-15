@@ -6,6 +6,7 @@
 std::vector<Trade> MatchingEngine::matchIncomingOrder(Order incomingOrder) {
     std::lock_guard<std::mutex> lock(engineMutex_);
     std::vector<Trade> trades;
+    trades.reserve(8);
     if (incomingOrder.side == Order::Side::Buy) {
         matchIncomingBuy(incomingOrder, trades);
     } else {
@@ -47,10 +48,10 @@ void MatchingEngine::matchIncomingBuy(Order& buyOrder, std::vector<Trade>& trade
     }
 
     // handle whatever is left
-    handleRemainder(buyOrder, trades);
+    handleRemainder(buyOrder);
 }
 
-void MatchingEngine::handleRemainder(const Order& order, std::vector<Trade>& trades) {
+void MatchingEngine::handleRemainder(const Order& order) {
     switch (order.tif) {
     case Order::TimeInForce::GTC:
         if (order.type == Order::Type::Limit) {
@@ -69,20 +70,17 @@ void MatchingEngine::matchIncomingSell(Order& sellOrder, std::vector<Trade>& tra
     if (sellOrder.tif == Order::TimeInForce::FOK && !canFullyFill(sellOrder)) { return; }
 
     while (book_.hasBids()) {
-
         Order& restingBid = book_.getBestBid();
-
         if (!canMatch(restingBid, sellOrder)) { break; }
-
         executeTrade(restingBid, sellOrder, restingBid.price, trades);
-
         // Remove empty price level once the resting order
         // has been completely consumed.
         if (restingBid.quantity == 0) { book_.removeBestBid(); }
         // Incoming order fully filled.
         if (sellOrder.quantity == 0) { return; }
     }
-    handleRemainder(sellOrder, trades);  // also use the shared helper
+
+    handleRemainder(sellOrder);
 }
 
 bool MatchingEngine::canMatch(const Order& buyOrder, const Order& sellOrder) {
@@ -94,5 +92,6 @@ bool MatchingEngine::canMatch(const Order& buyOrder, const Order& sellOrder) {
         return true;
     }
     // Matching condition: bid >= ask (price-time priority applies after this check).
+    // Market vs Market: not supported in practice; both have price 0 so they match.
     return buyOrder.price >= sellOrder.price;
 }

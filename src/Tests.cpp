@@ -85,6 +85,6 @@ int main() {
     test_killedFOK();
     test_filledFOK();
     test_IOCRemainderDiscarded();
-    std::cout << "All tests passed" << std::endl;
+    std::cout << "All tests passed\n";
     return 0;
 }
