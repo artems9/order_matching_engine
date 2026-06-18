@@ -1,6 +1,6 @@
-#include "OrderBook.hpp"
+#include "../include/order_book.hpp"
 
-void OrderBook::insertOrder(const Order& order) {
+void order_book::insertOrder(const Order& order) {
     if (order.side == Order::Side::Buy) {
         auto& orderList = bidLevels_[order.price];
         orderList.push_back(order);
@@ -12,7 +12,7 @@ void OrderBook::insertOrder(const Order& order) {
     }
 }
 
-void OrderBook::cancelOrder(const int orderId) {
+void order_book::cancelOrder(const int orderId) {
     const auto it = orderPositionById_.find(orderId);
     if (it == orderPositionById_.end()) { return; }
     const Order order = *it->second;
@@ -30,7 +30,7 @@ void OrderBook::cancelOrder(const int orderId) {
 }
 
 // Remove top-of-book order and cleanup empty price level
-void OrderBook::removeBestBid() {
+void order_book::removeBestBid() {
     const auto lvl = bidLevels_.begin();
     const Order& order = lvl->second.front();
     orderPositionById_.erase(order.id);
@@ -40,7 +40,7 @@ void OrderBook::removeBestBid() {
 }
 
 // Remove top-of-book order and cleanup empty price level
-void OrderBook::removeBestAsk() {
+void order_book::removeBestAsk() {
     const auto lvl = askLevels_.begin();
     const Order& order = lvl->second.front();
     orderPositionById_.erase(order.id);
@@ -49,21 +49,21 @@ void OrderBook::removeBestAsk() {
     if (lvl->second.empty()) { askLevels_.erase(lvl); }
 }
 
-bool OrderBook::hasBids() const { return !bidLevels_.empty(); }
+bool order_book::hasBids() const { return !bidLevels_.empty(); }
 
-bool OrderBook::hasAsks() const { return !askLevels_.empty(); }
+bool order_book::hasAsks() const { return !askLevels_.empty(); }
 
-Order& OrderBook::getBestBid() {
+Order& order_book::getBestBid() {
     const auto level = bidLevels_.begin();
     return level->second.front();
 }
 
-Order& OrderBook::getBestAsk() {
+Order& order_book::getBestAsk() {
     const auto level = askLevels_.begin();
     return level->second.front();
 }
 
-int OrderBook::availableAskQty(const Order& order) const {
+int order_book::availableAskQty(const Order& order) const {
     int total = 0;
     for (const auto& [price, orders] : askLevels_) {
         if (order.type == Order::Type::Limit && price > order.price) break;
@@ -74,7 +74,7 @@ int OrderBook::availableAskQty(const Order& order) const {
     return total;
 }
 
-int OrderBook::availableBidQty(const Order& order) const {
+int order_book::availableBidQty(const Order& order) const {
     int total = 0;
     for (const auto& [price, orders] : bidLevels_) {
         if (order.type == Order::Type::Limit && price < order.price) break;

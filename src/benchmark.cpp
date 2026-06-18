@@ -1,8 +1,8 @@
-#include "MatchingEngine.hpp"
+#include "../include/matching_engine.hpp"
+#include <algorithm>
+#include <chrono>
 #include <iostream>
 #include <vector>
-#include <chrono>
-#include <algorithm>
 
 int main() {
     std::vector<long> latencies;
@@ -10,7 +10,7 @@ int main() {
     latencies.reserve(NUM_ORDERS);
 
     auto totalStart = std::chrono::high_resolution_clock::now();
-    MatchingEngine engine;
+    matching_engine engine;
     for (int i = 0; i < NUM_ORDERS; i++) {
         Order::Side side = (i % 2 == 0) ? Order::Side::Buy : Order::Side::Sell;
         int price = 100 + (i % 10);

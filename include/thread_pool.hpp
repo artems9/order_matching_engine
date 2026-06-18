@@ -1,5 +1,5 @@
 #pragma once
-#include "MatchingEngine.hpp"
+#include "matching_engine.hpp"
 #include <condition_variable>
 #include <mutex>
 #include <queue>
@@ -8,14 +8,14 @@
 
 // Manages a pool of worker threads that process incoming orders.
 // Borrows a MatchingEngine reference — the engine must outlive the pool.
-class ThreadPool {
+class thread_pool {
 public:
-    explicit ThreadPool(int numThreads, MatchingEngine& engine);
-    ~ThreadPool();
-    ThreadPool(const ThreadPool&)               = delete;
-    ThreadPool& operator=(const ThreadPool&)    = delete;
-    ThreadPool(ThreadPool&&)                    = delete;
-    ThreadPool& operator=(ThreadPool&&)         = delete;
+    explicit thread_pool(int numThreads, matching_engine& engine);
+    ~thread_pool();
+    thread_pool(const thread_pool&)               = delete;
+    thread_pool& operator=(const thread_pool&)    = delete;
+    thread_pool(thread_pool&&)                    = delete;
+    thread_pool& operator=(thread_pool&&)         = delete;
     // Submit order for asynchronous processing by worker threads.
     void submitOrder(Order order);
 
@@ -23,7 +23,7 @@ private:
     void workerThreadLoop();
     // ThreadPool borrows the MatchingEngine. Someone else created it (main)
     // and will destroy it. ThreadPool just has a way to reach it.
-    MatchingEngine&             engine_;
+    matching_engine&             engine_;
     std::queue<Order>           orderQueue_;
     std::mutex                  queueMutex_;
     std::condition_variable     queueCv_;

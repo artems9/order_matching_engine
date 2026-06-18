@@ -4,24 +4,24 @@ set(CMAKE_CXX_STANDARD 20)
 
 add_executable(trading_engine
         src/main.cpp
-        src/OrderBook.cpp
-        src/MatchingEngine.cpp
-        src/ThreadPool.cpp
+        src/order_book.cpp
+        src/matching_engine.cpp
+        src/thread_pool.cpp
 )
 target_include_directories(trading_engine PRIVATE src)
 
 add_executable(tests
-        src/tests.cpp
-        src/OrderBook.cpp
-        src/MatchingEngine.cpp
-        src/ThreadPool.cpp
+        src/test.cpp
+        src/order_book.cpp
+        src/matching_engine.cpp
+        src/thread_pool.cpp
 )
 target_include_directories(tests PRIVATE src)
 
 add_executable(benchmark
-        src/benchmark.cpp
-        src/OrderBook.cpp
-        src/MatchingEngine.cpp
-        src/ThreadPool.cpp
+        src/Benchmark.cpp
+        src/order_book.cpp
+        src/matching_engine.cpp
+        src/thread_pool.cpp
 )
 target_include_directories(benchmark PRIVATE src)

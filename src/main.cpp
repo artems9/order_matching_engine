@@ -1,10 +1,10 @@
-#include "MatchingEngine.hpp"
-#include "Types.hpp"
+#include "../include/matching_engine.hpp"
+#include "../include/types.hpp"
 #include <iostream>
 #include <sstream>
 
 int main() {
-    MatchingEngine engine;
+    matching_engine engine;
     std::string line;
     int id {0};
     while (std::getline(std::cin, line)) {

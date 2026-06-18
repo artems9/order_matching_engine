@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Types.hpp"
+#include "types.hpp"
 
 #include <list>
 #include <map>
@@ -15,7 +15,7 @@
 //   lowest price first
 //
 // Orders at the same price execute FIFO.
-class OrderBook {
+class order_book {
 public:
     void insertOrder(const Order& order);
     // Cancel a resting order by ID in O(1) time. No-op if the order is not found.

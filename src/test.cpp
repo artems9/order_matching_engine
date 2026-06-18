@@ -1,9 +1,9 @@
-#include "MatchingEngine.hpp"
+#include "../include/matching_engine.hpp"
 #include <cassert>
 #include <iostream>
 
 void test_nonCrossingOrdersRestOnBook() {
-    MatchingEngine engine;
+    matching_engine engine;
 
     Order buy { 1, 1, 100, 10, Order::Side::Buy, Order::Type::Limit, Order::TimeInForce::GTC };
     Order sell { 2, 2, 101, 10, Order::Side::Sell, Order::Type::Limit, Order::TimeInForce::GTC };
@@ -16,7 +16,7 @@ void test_nonCrossingOrdersRestOnBook() {
 }
 
 void test_fifo() {
-    MatchingEngine engine;
+    matching_engine engine;
     Order buy { 1, 1, 100, 10, Order::Side::Buy, Order::Type::Limit, Order::TimeInForce::GTC };
     Order buy1 { 2, 2, 100, 10, Order::Side::Buy, Order::Type::Limit, Order::TimeInForce::GTC };
     Order sell { 3, 3, 100, 10, Order::Side::Sell, Order::Type::Limit, Order::TimeInForce::GTC };
@@ -29,7 +29,7 @@ void test_fifo() {
 }
 
 void test_partialFill() {
-    MatchingEngine engine;
+    matching_engine engine;
     Order buy { 1, 1, 100, 10, Order::Side::Buy, Order::Type::Limit, Order::TimeInForce::GTC };
     Order sell { 3, 3, 100, 4, Order::Side::Sell, Order::Type::Limit, Order::TimeInForce::GTC };
     auto trades = engine.matchIncomingOrder(buy);
@@ -39,7 +39,7 @@ void test_partialFill() {
 }
 
 void test_killedFOK() {
-    MatchingEngine engine;
+    matching_engine engine;
     Order buy { 1, 1, 100, 10, Order::Side::Buy, Order::Type::Limit, Order::TimeInForce::GTC };
     Order sell { 3, 3, 100, 20, Order::Side::Sell, Order::Type::Limit, Order::TimeInForce::FOK };
     auto trades1 = engine.matchIncomingOrder(buy);
@@ -51,7 +51,7 @@ void test_killedFOK() {
 }
 
 void test_filledFOK() {
-    MatchingEngine engine;
+    matching_engine engine;
     Order buy { 1, 1, 100, 10, Order::Side::Buy, Order::Type::Limit, Order::TimeInForce::GTC };
     Order sell { 3, 3, 100, 5, Order::Side::Sell, Order::Type::Limit, Order::TimeInForce::FOK };
     auto trades1 = engine.matchIncomingOrder(buy);
@@ -64,7 +64,7 @@ void test_filledFOK() {
 
 // fill whats possible and make sure nothing is left resting on book from IOC order
 void test_IOCRemainderDiscarded() {
-    MatchingEngine engine;
+    matching_engine engine;
     Order buy { 1, 1, 100, 10, Order::Side::Buy, Order::Type::Limit, Order::TimeInForce::GTC };
     Order sell { 3, 3, 100, 20, Order::Side::Sell, Order::Type::Limit, Order::TimeInForce::IOC };
     auto trades1 = engine.matchIncomingOrder(buy);
