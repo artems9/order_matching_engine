@@ -34,7 +34,7 @@ public:
     [[nodiscard]] int availableBidQty(const Order& order) const;
 
 private:
-    std::map<int, std::list<Order>, std::greater<>>         bidLevels_;
-    std::map<int, std::list<Order>>                         askLevels_;
-    std::unordered_map<int, std::list<Order>::iterator>     orderPositionById_;
+    std::map<int, std::list<Order>, std::greater<>> bidLevels_;
+    std::map<int, std::list<Order>> askLevels_;
+    std::unordered_map<int, std::list<Order>::iterator> orderPositionById_;
 };

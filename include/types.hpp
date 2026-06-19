@@ -8,13 +8,13 @@ struct Order {
 
     enum class Type {
         Market, // execute at any price
-        Limit   // execute at this price or better
+        Limit // execute at this price or better
     };
 
     enum class TimeInForce {
-        GTC,  // Good Till Cancelled — default, rests on book until filled or cancelled
-        IOC,  // Immediate or Cancel — fill what you can, cancel remainder
-        FOK   // Fill or Kill — fill everything or cancel entirely
+        GTC, // Good Till Cancelled — default, rests on book until filled or cancelled
+        IOC, // Immediate or Cancel — fill what you can, cancel remainder
+        FOK // Fill or Kill — fill everything or cancel entirely
     };
 
     int id;

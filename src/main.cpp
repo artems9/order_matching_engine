@@ -6,7 +6,7 @@
 int main() {
     matching_engine engine;
     std::string line;
-    int id {0};
+    int id{0};
     while (std::getline(std::cin, line)) {
         std::stringstream ss(line);
         std::string side;
@@ -14,7 +14,7 @@ int main() {
         int qty;
         ss >> side >> price >> qty;
         Order::Side pside = (side == "BUY") ? Order::Side::Buy : Order::Side::Sell;
-        Order order{id, id, price, qty, pside, Order::Type::Limit, Order::TimeInForce::GTC };
+        Order order{id, id, price, qty, pside, Order::Type::Limit, Order::TimeInForce::GTC};
         ++id;
         std::vector<Trade> trades = engine.matchIncomingOrder(order);
         for (const auto& trade : trades) {

@@ -29,5 +29,6 @@ private:
     void matchIncomingBuy(Order& buyOrder, std::vector<Trade>& trades);
     void matchIncomingSell(Order& sellOrder, std::vector<Trade>& trades);
     static bool canMatch(const Order& buyOrder, const Order& sellOrder);
-    static void executeTrade(Order& buyOrder, Order& sellOrder, int executionPrice, std::vector<Trade>& trades);
+    static void executeTrade(Order& buyOrder, Order& sellOrder, int executionPrice,
+                             std::vector<Trade>& trades);
 };

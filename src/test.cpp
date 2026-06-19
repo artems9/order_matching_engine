@@ -5,8 +5,8 @@
 void test_nonCrossingOrdersRestOnBook() {
     matching_engine engine;
 
-    Order buy { 1, 1, 100, 10, Order::Side::Buy, Order::Type::Limit, Order::TimeInForce::GTC };
-    Order sell { 2, 2, 101, 10, Order::Side::Sell, Order::Type::Limit, Order::TimeInForce::GTC };
+    Order buy{1, 1, 100, 10, Order::Side::Buy, Order::Type::Limit, Order::TimeInForce::GTC};
+    Order sell{2, 2, 101, 10, Order::Side::Sell, Order::Type::Limit, Order::TimeInForce::GTC};
 
     auto trades1 = engine.matchIncomingOrder(buy);
     auto trades2 = engine.matchIncomingOrder(sell);
@@ -17,9 +17,9 @@ void test_nonCrossingOrdersRestOnBook() {
 
 void test_fifo() {
     matching_engine engine;
-    Order buy { 1, 1, 100, 10, Order::Side::Buy, Order::Type::Limit, Order::TimeInForce::GTC };
-    Order buy1 { 2, 2, 100, 10, Order::Side::Buy, Order::Type::Limit, Order::TimeInForce::GTC };
-    Order sell { 3, 3, 100, 10, Order::Side::Sell, Order::Type::Limit, Order::TimeInForce::GTC };
+    Order buy{1, 1, 100, 10, Order::Side::Buy, Order::Type::Limit, Order::TimeInForce::GTC};
+    Order buy1{2, 2, 100, 10, Order::Side::Buy, Order::Type::Limit, Order::TimeInForce::GTC};
+    Order sell{3, 3, 100, 10, Order::Side::Sell, Order::Type::Limit, Order::TimeInForce::GTC};
     auto trades1 = engine.matchIncomingOrder(buy);
     assert(trades1.empty());
     auto trades2 = engine.matchIncomingOrder(buy1);
@@ -30,18 +30,19 @@ void test_fifo() {
 
 void test_partialFill() {
     matching_engine engine;
-    Order buy { 1, 1, 100, 10, Order::Side::Buy, Order::Type::Limit, Order::TimeInForce::GTC };
-    Order sell { 3, 3, 100, 4, Order::Side::Sell, Order::Type::Limit, Order::TimeInForce::GTC };
+    Order buy{1, 1, 100, 10, Order::Side::Buy, Order::Type::Limit, Order::TimeInForce::GTC};
+    Order sell{3, 3, 100, 4, Order::Side::Sell, Order::Type::Limit, Order::TimeInForce::GTC};
     auto trades = engine.matchIncomingOrder(buy);
     assert(trades.empty());
     auto trades1 = engine.matchIncomingOrder(sell);
-    assert(trades1.size() == 1 && trades1.front().quantity == std::min(buy.quantity, sell.quantity));
+    assert(
+        trades1.size() == 1 && trades1.front().quantity == std::min(buy.quantity, sell.quantity));
 }
 
 void test_killedFOK() {
     matching_engine engine;
-    Order buy { 1, 1, 100, 10, Order::Side::Buy, Order::Type::Limit, Order::TimeInForce::GTC };
-    Order sell { 3, 3, 100, 20, Order::Side::Sell, Order::Type::Limit, Order::TimeInForce::FOK };
+    Order buy{1, 1, 100, 10, Order::Side::Buy, Order::Type::Limit, Order::TimeInForce::GTC};
+    Order sell{3, 3, 100, 20, Order::Side::Sell, Order::Type::Limit, Order::TimeInForce::FOK};
     auto trades1 = engine.matchIncomingOrder(buy);
     // buy should be resting in book and produce 0 trades
     assert(trades1.empty());
@@ -52,8 +53,8 @@ void test_killedFOK() {
 
 void test_filledFOK() {
     matching_engine engine;
-    Order buy { 1, 1, 100, 10, Order::Side::Buy, Order::Type::Limit, Order::TimeInForce::GTC };
-    Order sell { 3, 3, 100, 5, Order::Side::Sell, Order::Type::Limit, Order::TimeInForce::FOK };
+    Order buy{1, 1, 100, 10, Order::Side::Buy, Order::Type::Limit, Order::TimeInForce::GTC};
+    Order sell{3, 3, 100, 5, Order::Side::Sell, Order::Type::Limit, Order::TimeInForce::FOK};
     auto trades1 = engine.matchIncomingOrder(buy);
     // buy should be resting in book and produce 0 trades
     assert(trades1.empty());
@@ -65,15 +66,15 @@ void test_filledFOK() {
 // fill whats possible and make sure nothing is left resting on book from IOC order
 void test_IOCRemainderDiscarded() {
     matching_engine engine;
-    Order buy { 1, 1, 100, 10, Order::Side::Buy, Order::Type::Limit, Order::TimeInForce::GTC };
-    Order sell { 3, 3, 100, 20, Order::Side::Sell, Order::Type::Limit, Order::TimeInForce::IOC };
+    Order buy{1, 1, 100, 10, Order::Side::Buy, Order::Type::Limit, Order::TimeInForce::GTC};
+    Order sell{3, 3, 100, 20, Order::Side::Sell, Order::Type::Limit, Order::TimeInForce::IOC};
     auto trades1 = engine.matchIncomingOrder(buy);
     assert(trades1.empty());
     auto trades2 = engine.matchIncomingOrder(sell);
     // filled ioc amount
     assert(trades2.size() == 1 && trades2.front().quantity == buy.quantity);
     // everything left from sell discarded (not resting on book) so making buy produces 0 trades
-    Order buy1 { 4, 4, 100, 10, Order::Side::Buy, Order::Type::Limit, Order::TimeInForce::GTC };
+    Order buy1{4, 4, 100, 10, Order::Side::Buy, Order::Type::Limit, Order::TimeInForce::GTC};
     auto trades3 = engine.matchIncomingOrder(buy1);
     assert(trades3.empty());
 }

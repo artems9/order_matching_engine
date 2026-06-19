@@ -30,11 +30,11 @@ void thread_pool::workerThreadLoop() {
             queueCv_.wait(lock, [this]() {
                 return !orderQueue_.empty() || shutdown_;
             });
-            if (shutdown_ && orderQueue_.empty()) return;
+            if (shutdown_ && orderQueue_.empty())
+                return;
             order = orderQueue_.front();
             orderQueue_.pop();
         }
         engine_.matchIncomingOrder(order);
     }
 }
-

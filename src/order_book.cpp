@@ -66,7 +66,8 @@ Order& order_book::getBestAsk() {
 int order_book::availableAskQty(const Order& order) const {
     int total = 0;
     for (const auto& [price, orders] : askLevels_) {
-        if (order.type == Order::Type::Limit && price > order.price) break;
+        if (order.type == Order::Type::Limit && price > order.price)
+            break;
         for (const auto& o : orders) {
             total += o.quantity;
         }
@@ -77,7 +78,8 @@ int order_book::availableAskQty(const Order& order) const {
 int order_book::availableBidQty(const Order& order) const {
     int total = 0;
     for (const auto& [price, orders] : bidLevels_) {
-        if (order.type == Order::Type::Limit && price < order.price) break;
+        if (order.type == Order::Type::Limit && price < order.price)
+            break;
         for (const auto& o : orders) {
             total += o.quantity;
         }

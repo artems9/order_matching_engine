@@ -15,9 +15,10 @@ std::vector<Trade> matching_engine::matchIncomingOrder(Order incomingOrder) {
     return trades;
 }
 
-void matching_engine::executeTrade(Order& buyOrder, Order& sellOrder, const int executionPrice, std::vector<Trade>& trades) {
+void matching_engine::executeTrade(Order& buyOrder, Order& sellOrder, const int executionPrice,
+                                   std::vector<Trade>& trades) {
     const int tradeQty = std::min(buyOrder.quantity, sellOrder.quantity);
-    trades.push_back({ buyOrder.id, sellOrder.id, executionPrice, tradeQty });
+    trades.push_back({buyOrder.id, sellOrder.id, executionPrice, tradeQty});
     buyOrder.quantity -= tradeQty;
     sellOrder.quantity -= tradeQty;
 }
@@ -28,8 +29,8 @@ void matching_engine::executeTrade(Order& buyOrder, Order& sellOrder, const int 
 // FOK           → nothing (already fully filled or killed before loop)
 bool matching_engine::canFullyFill(const Order& order) const {
     int available = (order.side == Order::Side::Buy)
-        ? book_.availableAskQty(order)
-        : book_.availableBidQty(order);
+                        ? book_.availableAskQty(order)
+                        : book_.availableBidQty(order);
 
     return available >= order.quantity;
 }
