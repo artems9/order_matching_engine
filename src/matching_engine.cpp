@@ -15,25 +15,6 @@ std::vector<Trade> matching_engine::matchIncomingOrder(Order incomingOrder) {
     return trades;
 }
 
-void matching_engine::executeTrade(Order& buyOrder, Order& sellOrder, const int executionPrice,
-                                   std::vector<Trade>& trades) {
-    const int tradeQty = std::min(buyOrder.quantity, sellOrder.quantity);
-    trades.push_back({buyOrder.id, sellOrder.id, executionPrice, tradeQty});
-    buyOrder.quantity -= tradeQty;
-    sellOrder.quantity -= tradeQty;
-}
-
-// GTC + Limit   → insertOrder
-// GTC + Market  → discard
-// IOC           → discard
-// FOK           → nothing (already fully filled or killed before loop)
-bool matching_engine::canFullyFill(const Order& order) const {
-    int available = (order.side == Order::Side::Buy)
-                        ? book_.availableAskQty(order)
-                        : book_.availableBidQty(order);
-
-    return available >= order.quantity;
-}
 
 void matching_engine::matchIncomingBuy(Order& buyOrder, std::vector<Trade>& trades) {
     // FOK: check before touching the book at all
@@ -50,20 +31,6 @@ void matching_engine::matchIncomingBuy(Order& buyOrder, std::vector<Trade>& trad
 
     // handle whatever is left
     handleRemainder(buyOrder);
-}
-
-void matching_engine::handleRemainder(const Order& order) {
-    switch (order.tif) {
-    case Order::TimeInForce::GTC:
-        if (order.type == Order::Type::Limit) {
-            book_.insertOrder(order);
-        }
-        break;
-    case Order::TimeInForce::IOC:
-        break; // discard remainder
-    case Order::TimeInForce::FOK:
-        break; // fully filled or already returned early
-    }
 }
 
 void matching_engine::matchIncomingSell(Order& sellOrder, std::vector<Trade>& trades) {
@@ -84,6 +51,26 @@ void matching_engine::matchIncomingSell(Order& sellOrder, std::vector<Trade>& tr
     handleRemainder(sellOrder);
 }
 
+// GTC + Limit   → insertOrder
+// GTC + Market  → discard
+// IOC           → discard
+// FOK           → nothing (already fully filled or killed before loop)
+bool matching_engine::canFullyFill(const Order& order) const {
+    int available = (order.side == Order::Side::Buy)
+                        ? book_.availableAskQty(order)
+                        : book_.availableBidQty(order);
+
+    return available >= order.quantity;
+}
+
+void matching_engine::executeTrade(Order& buyOrder, Order& sellOrder, const int executionPrice,
+                                   std::vector<Trade>& trades) {
+    const int tradeQty = std::min(buyOrder.quantity, sellOrder.quantity);
+    trades.push_back({buyOrder.id, sellOrder.id, executionPrice, tradeQty});
+    buyOrder.quantity -= tradeQty;
+    sellOrder.quantity -= tradeQty;
+}
+
 bool matching_engine::canMatch(const Order& buyOrder, const Order& sellOrder) {
     // Market orders cross the spread regardless of price; only liquidity limits matching.
     if (buyOrder.type == Order::Type::Market && sellOrder.type == Order::Type::Limit) {
@@ -95,4 +82,18 @@ bool matching_engine::canMatch(const Order& buyOrder, const Order& sellOrder) {
     // Matching condition: bid >= ask (price-time priority applies after this check).
     // Market vs Market: not supported in practice; both have price 0 so they match.
     return buyOrder.price >= sellOrder.price;
+}
+
+void matching_engine::handleRemainder(const Order& order) {
+    switch (order.tif) {
+    case Order::TimeInForce::GTC:
+        if (order.type == Order::Type::Limit) {
+            book_.insertOrder(order);
+        }
+        break;
+    case Order::TimeInForce::IOC:
+        break; // discard remainder
+    case Order::TimeInForce::FOK:
+        break; // fully filled or already returned early
+    }
 }
