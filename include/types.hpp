@@ -25,6 +25,9 @@ struct Order {
     Side side;
     Type type;
     TimeInForce tif;
+
+    Order* prev { nullptr };
+    Order* next { nullptr };
 };
 
 

@@ -7,6 +7,7 @@ add_executable(trading_engine
         src/order_book.cpp
         src/matching_engine.cpp
         src/thread_pool.cpp
+        include/order_pool.hpp
 )
 target_include_directories(trading_engine PRIVATE src)
 
@@ -15,6 +16,7 @@ add_executable(tests
         src/order_book.cpp
         src/matching_engine.cpp
         src/thread_pool.cpp
+        include/order_pool.hpp
 )
 target_include_directories(tests PRIVATE src)
 
@@ -23,5 +25,6 @@ add_executable(benchmark
         src/order_book.cpp
         src/matching_engine.cpp
         src/thread_pool.cpp
+        include/order_pool.hpp
 )
 target_include_directories(benchmark PRIVATE src)
