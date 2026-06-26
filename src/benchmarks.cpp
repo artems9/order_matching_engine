@@ -13,11 +13,7 @@ int main() {
     MatchingEngine engine;
     for (int i = 0; i < NUM_ORDERS; i++) {
         Order::Side side = (i % 2 == 0) ? Order::Side::Buy : Order::Side::Sell;
-<<<<<<< Updated upstream:src/benchmark.cpp
         int price = (side == Order::Side::Buy) ? 100 : 99;
-=======
-        int price = (side == Order::Side::Buy) ? 100 : 99; // sell below buy = always matches
->>>>>>> Stashed changes:src/benchmarks.cpp
         Order o{i, i, price, 10, side, Order::Type::Limit, Order::TimeInForce::GTC};
         auto start = std::chrono::high_resolution_clock::now();
         engine.matchIncomingOrder(o);

@@ -6,7 +6,6 @@
 #include <cstddef>
 #include <cassert>
 
-// MANAGES WHERE ORDERS LIVE IN MEMORY
 template <std::size_t PoolCapacity>
 class OrderPool {
 
@@ -25,8 +24,6 @@ public:
             slot->next = head_;
             head_ = slot;
         }
-
-        // After construction, head_ points to the first available free slot
     }
 
     ~OrderPool() = default;
@@ -41,7 +38,6 @@ public:
 
     // Allocates a slot from the free list and returns it as an Order object.
     // The returned memory is uninitialized — caller must construct Order in-place.
-    // one slot leaves front, head moves right
     Order* allocateSlot() {
         // Compiled out in release build
         assert(head_ && "OrderPool exhausted");
@@ -56,7 +52,6 @@ public:
 
     // Returns a previously allocated slot back to the free list.
     // Caller must ensure the Order object has been destroyed first.
-    // one slot joins front, head moves left
     void deallocateSlot(Order* ptr) {
         // Compiled out in release build
         assert(ptr && "Can't deallocate slot at nullptr");

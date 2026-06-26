@@ -48,7 +48,6 @@ private:
     // doubly linked list because cancel() takes pointer to Order that may be in middle
     // allows O(1) for all operations on any Order in PriceLevel
     // most importantly, avoid heap malloc for every order insert
-    // MANAGES HOW ORDERS ARE CONNECTED TO EACH OTHER
     struct PriceLevel {
         Order* head{nullptr};
         Order* tail{nullptr};
