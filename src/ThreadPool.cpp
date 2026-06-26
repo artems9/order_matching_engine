@@ -1,13 +1,13 @@
-#include "../include/thread_pool.hpp"
+#include "../include/ThreadPool.hpp"
 
-thread_pool::thread_pool(const int numThreads, matching_engine& engine) : engine_(engine) {
+ThreadPool::ThreadPool(const int numThreads, MatchingEngine& engine) : engine_(engine) {
     workers_.reserve(numThreads);
     for (int i = 0; i < numThreads; ++i) {
-        workers_.emplace_back(&thread_pool::workerThreadLoop, this);
+        workers_.emplace_back(&ThreadPool::workerThreadLoop, this);
     }
 }
 
-thread_pool::~thread_pool() {
+ThreadPool::~ThreadPool() {
     shutdown_ = true;
     queueCv_.notify_all();
     // Join all workers to ensure no thread accesses destroyed engine or queue.
@@ -16,13 +16,13 @@ thread_pool::~thread_pool() {
     }
 }
 
-void thread_pool::submitOrder(Order order) {
+void ThreadPool::submitOrder(Order order) {
     std::lock_guard<std::mutex> lock(queueMutex_);
     orderQueue_.push(order);
     queueCv_.notify_one();
 }
 
-void thread_pool::workerThreadLoop() {
+void ThreadPool::workerThreadLoop() {
     while (true) {
         Order order;
         {

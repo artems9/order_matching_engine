@@ -1,4 +1,4 @@
-#include "../include/matching_engine.hpp"
+#include "../include/MatchingEngine.hpp"
 #include <algorithm>
 #include <chrono>
 #include <iostream>
@@ -10,10 +10,10 @@ int main() {
     latencies.reserve(NUM_ORDERS);
 
     auto totalStart = std::chrono::high_resolution_clock::now();
-    matching_engine engine;
+    MatchingEngine engine;
     for (int i = 0; i < NUM_ORDERS; i++) {
         Order::Side side = (i % 2 == 0) ? Order::Side::Buy : Order::Side::Sell;
-        int price = 100 + (i % 10);
+        int price = (side == Order::Side::Buy) ? 100 : 99;
         Order o{i, i, price, 10, side, Order::Type::Limit, Order::TimeInForce::GTC};
         auto start = std::chrono::high_resolution_clock::now();
         engine.matchIncomingOrder(o);

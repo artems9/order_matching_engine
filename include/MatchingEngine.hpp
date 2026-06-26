@@ -1,5 +1,5 @@
 #pragma once
-#include "order_book.hpp"
+#include "OrderBook.hpp"
 #include <mutex>
 #include <vector>
 
@@ -13,18 +13,18 @@
 // - Unfilled limit orders rest on the book.
 // - Unfilled market orders are discarded.
 
-class matching_engine {
+class MatchingEngine {
 public:
     // Processes an incoming order and returns all trades
     // generated during matching.
     std::vector<Trade> matchIncomingOrder(Order incomingOrder);
 
 private:
-    order_book book_;
+    OrderBook book_;
     // Serializes access to the order book across threads.
     std::mutex engineMutex_;
 
-    bool canFullyFill(const Order& order) const;
+    [[nodiscard]] bool canFullyFill(const Order& order) const;
     void handleRemainder(const Order& order);
     void matchIncomingBuy(Order& buyOrder, std::vector<Trade>& trades);
     void matchIncomingSell(Order& sellOrder, std::vector<Trade>& trades);
