@@ -113,13 +113,13 @@ demonstrate that tradeoff directly.
 1,000,000 orders, alternating buys at 100 and sells at 99 (always crossing),
 median of 5 runs, release build on MacBook Air M2:
 
-| Configuration      | Throughput        | p50   | p95   | p99    |
-|--------------------|-------------------|-------|-------|--------|
-| std::list (before) | ~12.4M orders/sec | 42 ns | 84 ns | 167 ns |
-| Pool allocator     | ~13.5M orders/sec | 42 ns | 84 ns | 125 ns |
-| Thread pool (4t)   | ~4M orders/sec    | —     | —     | —      |
+| Configuration        | Throughput (orders/sec) | p50   | p95   | p99       |
+|----------------------|-------------------------|-------|-------|-----------|
+| std::list (baseline) | ~12.4M                  | 42 ns | 84 ns | 167 ns    |
+| Pool allocator       | ~14.6M – 14.9M          | 42 ns | 84 ns | 84–125 ns |
+| Thread pool (4t)     | ~4.0M                   | —     | —     | —         |
 
-Pool allocator reduces p99 tail latency by ~25% by eliminating per-order
+Pool allocator reduces p99 tail latency by ~30% by eliminating per-order
 heap allocation on the hot path.
 
 Single-threaded is ~3x faster than the thread pool — matching is inherently
