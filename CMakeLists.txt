@@ -2,29 +2,20 @@ cmake_minimum_required(VERSION 3.20)
 project(trading_engine)
 set(CMAKE_CXX_STANDARD 20)
 
-add_executable(trading_engine
-        src/main.cpp
-        src/order_book.cpp
-        src/matching_engine.cpp
-        src/thread_pool.cpp
-        include/order_pool.hpp
+# shared code — built once, linked into all three executables
+add_library(engine_lib
+        src/OrderBook.cpp
+        src/MatchingEngine.cpp
+        src/ThreadPool.cpp
 )
-target_include_directories(trading_engine PRIVATE src)
+target_include_directories(engine_lib PUBLIC include)
 
-add_executable(tests
-        src/test.cpp
-        src/order_book.cpp
-        src/matching_engine.cpp
-        src/thread_pool.cpp
-        include/order_pool.hpp
-)
-target_include_directories(tests PRIVATE src)
+# executables
+add_executable(main src/main.cpp)
+target_link_libraries(main PRIVATE engine_lib)
 
-add_executable(benchmark
-        src/Benchmark.cpp
-        src/order_book.cpp
-        src/matching_engine.cpp
-        src/thread_pool.cpp
-        include/order_pool.hpp
-)
-target_include_directories(benchmark PRIVATE src)
+add_executable(tests src/tests.cpp)
+target_link_libraries(tests PRIVATE engine_lib)
+
+add_executable(benchmark src/benchmarks.cpp)
+target_link_libraries(benchmark PRIVATE engine_lib)

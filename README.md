@@ -1,6 +1,7 @@
 # Low-Latency Matching Engine
 
 ## What it is
+
 A price-time priority order matching engine fed with live order flow
 from the Binance BTC/USDT order book.
 
@@ -25,12 +26,14 @@ from the Binance BTC/USDT order book.
                        Trades printed to terminal
 
 ## Prerequisites
+
 - C++20 compiler
 - CMake 3.20+
 - Python 3.12+
 - websockets: pip3 install websockets
 
 ## Building
+
     cmake -DCMAKE_BUILD_TYPE=Release -S . -B cmake-build-release
     cmake --build cmake-build-release
 
@@ -47,6 +50,7 @@ from the Binance BTC/USDT order book.
     ./cmake-build-release/benchmark
 
 ## How it works
+
 OrderBook stores resting orders in a std::map of price levels, each holding
 a FIFO std::list of orders. MatchingEngine owns the book and processes
 incoming orders, matching them against resting liquidity using price-time
@@ -57,6 +61,7 @@ incoming bids and asks, converts prices to integers, and pipes them into
 the engine via stdin.
 
 ## Order types supported
+
 - Limit GTC — rests on book until filled or cancelled
 - Limit IOC — fills what it can, discards remainder
 - Limit FOK — fills completely or cancels entirely
@@ -90,6 +95,7 @@ thread per instrument with a lock-free inbound queue. These benchmarks
 demonstrate that tradeoff directly.
 
 ## Benchmarks
+
 1,000,000 orders, mixed buys and sells with overlapping prices,
 median of 5 runs, release build on MacBook Air M2:
 
@@ -119,6 +125,26 @@ allocation entirely. Real HFT systems pre-allocate all memory before
 trading hours and never call malloc on the critical path.
 
 ## What's next
+
 - Pool allocator to eliminate per-order heap allocation
 - Per-instrument thread partitioning to make parallelism meaningful
 - Lock-free inbound queue
+- Feed Handler: parse real exchange data, maintain local order book, connect to engine
+
+A UI?
+Left panel:
+
+* order book (bid/ask ladder)
+
+Center:
+
+* trades stream
+
+Right:
+
+* queue size + latency stats
+
+Bottom:
+
+* price chart (simple line)
+

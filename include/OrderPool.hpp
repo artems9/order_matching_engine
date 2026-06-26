@@ -1,12 +1,12 @@
 #pragma once
 
-#include "types.hpp"
+#include "Types.hpp"
 
 #include <algorithm>
 #include <cstddef>
 #include <cassert>
 
-
+// MANAGES WHERE ORDERS LIVE IN MEMORY
 template <std::size_t PoolCapacity>
 class OrderPool {
 
