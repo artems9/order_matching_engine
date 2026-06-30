@@ -1,4 +1,4 @@
-#include "../include/MatchingEngine.hpp"
+#include "MatchingEngine.hpp"
 
 // Trades execute at the resting order's price.
 // The resting order has time priority and therefore

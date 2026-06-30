@@ -1,4 +1,4 @@
-#include "../include/ThreadPool.hpp"
+#include "ThreadPool.hpp"
 
 ThreadPool::ThreadPool(const int numThreads, MatchingEngine& engine) : engine_(engine) {
     workers_.reserve(numThreads);
